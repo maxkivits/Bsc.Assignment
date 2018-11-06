@@ -70,6 +70,7 @@ xtickangle(45)
 ylabel('Frequency')
 
 %% Separate image and label into training and validation sets
+rng('default');
 
 numFiles = numel(imds.Files);
 shuffledIndices = randperm(numFiles);

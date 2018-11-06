@@ -3,7 +3,6 @@ clc; close all;
 imDir = '/deepstore/datasets/ram/slss/ImagesOriginal/';
 pxDir = '/deepstore/datasets/ram/slss/LabelsOriginal/';
 
-
 classNames = ["Skin" "Lesion"]; %define classes
 pixelLabelID = [1 2];
 
@@ -23,14 +22,14 @@ ylabel('Frequency')
 rng('default');
 
 numFiles = numel(imds.Files);
-shuffledIndicesScratch = randperm(numFiles);
+shuffledIndicesTransferTotal = randperm(numFiles);
 
 % Use 70% of the images for training.
 N = round(0.70 * numFiles);
-trainingIdx = shuffledIndicesScratch(1:N);
+trainingIdx = shuffledIndicesTransferTotal(1:N);
 
 % Use the rest for testing.
-testIdx = shuffledIndicesScratch(N+1:end);
+testIdx = shuffledIndicesTransferTotal(N+1:end);
 
 % Create image datastores for training and test.
 trainingImages = imds.Files(trainingIdx);
@@ -53,10 +52,13 @@ numTestingImages = numel(imdsTest.Files);
 
 % create labelimage datastore for training validation
 impxdsTest = pixelLabelImageDatastore(imdsTest, pxdsTest);
-
-%% Use segnetlayers to generate the scratch layergraph but with all weights initialized using MSRA
+%% Load VGG16 based Net
 imageSize = [360 480 3];
-lgraphscratch = segnetLayers(imageSize,numClasses,5,'NumConvolutionLayers',[2 2 3 3 3]);
+numClasses = numel(classNames);
+lgraphTransferTotal = load('/home/s1590294/nets/transferTotalNet.mat');
+lgraphTransferTotal = layerGraph(lgraphTransferTotal);
+
+
 
 %% Class weight balancing
 imageFreq = tbl.PixelCount ./ tbl.ImagePixelCount;
@@ -65,9 +67,9 @@ classWeights = median(imageFreq) ./ imageFreq;
 pxLayer = pixelClassificationLayer('Name','labels','classNames',tbl.Name,'ClassWeights',classWeights);
 
 %replace existing pixelclassification layer
-lgraphscratch = removeLayers(lgraphscratch,'pixelLabels');
-lgraphscratch = addLayers(lgraphscratch, pxLayer);
-lgraphscratch = connectLayers(lgraphscratch,'softmax','labels');
+lgraphTransferTotal = removeLayers(lgraphTransferTotal,'labels');
+lgraphTransferTotal = addLayers(lgraphTransferTotal, pxLayer);
+lgraphTransferTotal = connectLayers(lgraphTransferTotal,'softmax','labels');
 
 %% Image augmentation to generate more training data
 
@@ -98,7 +100,7 @@ options = trainingOptions('sgdm', ...
     'VerboseFrequency',100);
 
 %% Train network!
-[trainednetScratch, info] = trainNetwork(pximds,lgraphscratch,options);
+[trainedNetTransferTotal, info] = trainNetwork(pximds,lgraphTransferTotal,options);
 
 
 % %% Test network
@@ -111,16 +113,17 @@ options = trainingOptions('sgdm', ...
 
 %% Evaluate network performance
 
-pxdsResultsScratch = semanticseg(imdsTest,trainednetScratch, ...
+pxdsResultsTransferTotal = semanticseg(imdsTest,trainedNetTransferTotal, ...
     'MiniBatchSize',1, ...
-    'Verbose',false);
+    'Verbose',true);
  
-%metricsScratch = evaluateSemanticSegmentation(pxdsResultsScratch,pxds,'Verbose',false);
+%metricsTransfer = evaluateSemanticSegmentation(pxdsResultsTransfer,pxds,'Verbose',false);
 % metrics.DataSetMetrics;         %Average performance of entire network over all classes
 % metrics.ClassMetrics;           %Performance of network per class
-
+ 
 %% Save Net and results
-save('/home/s1590294/OutScratch', 'trainednetScratch');
-save('/home/s1590294/OutScratch', 'pxdsResultsScratch');
-save('/home/s1590294/OutScratch', 'shuffledIndicesScratch');
+save('/home/s1590294/OutTransferTotal', 'pxdsResultsTransferTotal');
+save('/home/s1590294/OutTransferTotal', 'trainedNetTransferTotal');
+save('/home/s1590294/OutTransferTotal', 'shuffledIndicesTransferTotal');
+
 

@@ -1,7 +1,7 @@
 clc; close all;
 %% Create image and label Datastores
-imDir = '.:/deepstore/datasets/ram/slss/augImages';
-pxDir = '.:/deepstore/datasets/ram/slss/augsLabels';
+imDir = '/deepstore/datasets/ram/slss/ImagesOriginal/';
+pxDir = '/deepstore/datasets/ram/slss/LabelsOriginal/';
 
 classNames = ["Skin" "Lesion"]; %define classes
 pixelLabelID = [1 2];
@@ -19,16 +19,17 @@ xticklabels(tbl.Name)
 xtickangle(45)
 ylabel('Frequency')
 %% Separate image and label into training and validation sets
+rng('default');
 
 numFiles = numel(imds.Files);
-shuffledIndices = randperm(numFiles);
+shuffledIndicesTransfer = randperm(numFiles);
 
 % Use 70% of the images for training.
 N = round(0.70 * numFiles);
-trainingIdx = shuffledIndices(1:N);
+trainingIdx = shuffledIndicesTransfer(1:N);
 
 % Use the rest for testing.
-testIdx = shuffledIndices(N+1:end);
+testIdx = shuffledIndicesTransfer(N+1:end);
 
 % Create image datastores for training and test.
 trainingImages = imds.Files(trainingIdx);
@@ -51,12 +52,11 @@ numTestingImages = numel(imdsTest.Files);
 
 % create labelimage datastore for training validation
 impxdsTest = pixelLabelImageDatastore(imdsTest, pxdsTest);
-%% use segnetLayers to generate layergraph of the segmentation network based on the vgg16 classification network
+%% Load VGG16 based Net
 imageSize = [360 480 3];
 numClasses = numel(classNames);
-lgraphtransfer = segnetLayers(imageSize,numClasses,'vgg16');
-figure
-plot(lgraphtransfer);
+lgraphtransfer = load('/home/s1590294/nets/transferNet.mat');
+
 
 %% Class weight balancing
 imageFreq = tbl.PixelCount ./ tbl.ImagePixelCount;
@@ -111,14 +111,15 @@ options = trainingOptions('sgdm', ...
 
 %% Evaluate network performance
 
-pxdsResultsTransfer = semanticseg(imds,trainednetTransfer, ...
+pxdsResultsTransfer = semanticseg(imdsTest,trainednetTransfer, ...
     'MiniBatchSize',1, ...
     'Verbose',true);
  
-metricsTransfer = evaluateSemanticSegmentation(pxdsResultsTransfer,pxds,'Verbose',false);
+%metricsTransfer = evaluateSemanticSegmentation(pxdsResultsTransfer,pxds,'Verbose',false);
 % metrics.DataSetMetrics;         %Average performance of entire network over all classes
 % metrics.ClassMetrics;           %Performance of network per class
  
-%% Save Net and metrics
-save Transferfiles;
-
+%% Save Net and results
+save('/home/s1590294/OutTransfer', 'pxdsResultsTransfer');
+save('/home/s1590294/OutTransfer', 'trainednetTransfer');
+save('/home/s1590294/OutTransfer', 'shuffledIndicesTransfer');
