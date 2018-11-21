@@ -1,26 +1,13 @@
 clc; close all;
 %% Create image and label Datastores
-%imLoc = '/deepstore/datasets/ram/slss/';
-%pxLoc = '/deepstore/datasets/ram/slss/';
-
-imLoc = 'C:\Users\Max Kivits\Documents\MATLAB\Bacheloropdracht\Data\crop\';
-pxLoc = 'C:\Users\Max Kivits\Documents\MATLAB\Bacheloropdracht\Data\crop\';
-
-imDirSpec = 'cropResImg';
-pxDirSpec = 'cropResLab';
-
-% pxDirSpec = 'labels';
-
-imDir = sprintf('%s%s',imLoc,imDirSpec);
-pxDir = sprintf('%s%s',pxLoc,pxDirSpec);
-
+imDir = '/deepstore/datasets/ram/slss/ImagesOriginal/';
+pxDir = '/deepstore/datasets/ram/slss/LabelsOriginal/';
 
 classNames = ["Skin" "Lesion"]; %define classes
 pixelLabelID = [1 2];
 
 imds = imageDatastore(imDir);
 pxds = pixelLabelDatastore(pxDir,classNames,pixelLabelID);
-
 %% Calculate label frequency
 tbl = countEachLabel(pxds);
 frequency = tbl.PixelCount/sum(tbl.PixelCount);
@@ -35,14 +22,14 @@ ylabel('Frequency')
 rng('default');
 
 numFiles = numel(imds.Files);
-shuffledIndices_DataTestCROP = randperm(numFiles);
+shuffledIndicesTransfer = randperm(numFiles);
 
 % Use 70% of the images for training.
 N = round(0.70 * numFiles);
-trainingIdx = shuffledIndices_DataTestCROP(1:N);
+trainingIdx = shuffledIndicesTransfer(1:N);
 
 % Use the rest for testing.
-testIdx = shuffledIndices_DataTestCROP(N+1:end);
+testIdx = shuffledIndicesTransfer(N+1:end);
 
 % Create image datastores for training and test.
 trainingImages = imds.Files(trainingIdx);
@@ -65,16 +52,11 @@ numTestingImages = numel(imdsTest.Files);
 
 % create labelimage datastore for training validation
 impxdsTest = pixelLabelImageDatastore(imdsTest, pxdsTest);
-
-%% Load Net
+%% Load VGG16 based Net
 imageSize = [360 480 3];
 numClasses = numel(classNames);
-%lgraph = load('/home/s1590294/net/lgraphSGN3.mat');
-lgraph = load('C:\Users\Max Kivits\Documents\MATLAB\Bacheloropdracht\Cluster\net\lgraphSGN3.mat');
+lgraphtransfer = load('/home/s1590294/nets/transferNet.mat');
 
-%Convert to layergraph to be able to edit network
-%lgraph = layerGraph(lgraph.lgraphSGN3);
-lgraph = lgraph.haha;
 
 %% Class weight balancing
 imageFreq = tbl.PixelCount ./ tbl.ImagePixelCount;
@@ -83,9 +65,9 @@ classWeights = median(imageFreq) ./ imageFreq;
 pxLayer = pixelClassificationLayer('Name','labels','classNames',tbl.Name,'ClassWeights',classWeights);
 
 %replace existing pixelclassification layer
-lgraph = removeLayers(lgraph,'pixelLabels');
-lgraph = addLayers(lgraph, pxLayer);
-lgraph = connectLayers(lgraph,'softmax','labels');
+lgraphtransfer = removeLayers(lgraphtransfer,'pixelLabels');
+lgraphtransfer = addLayers(lgraphtransfer, pxLayer);
+lgraphtransfer = connectLayers(lgraphtransfer,'softmax','labels');
 
 %% Image augmentation to generate more training data
 
@@ -94,10 +76,11 @@ augmenter = imageDataAugmenter(...
     'RandXTranslation',[-100 100],...
     'RandYTranslation',[-100 100],...
     'RandRotation',[-30, 30],...
-    'RandYReflection',true...
+    'RandYReflection',true,...
+    'RandXScale',[0.75 1.5],...
+    'RandYScale',[0.75 1.5]...
     );
-%     'RandXScale',[0.75 1.5],...
-%     'RandYScale',[0.75 1.5]...
+
 %% Create an imagelabel datastore specifically used in segmentation networks
 pximds = pixelLabelImageDatastore(imdsTrain,pxdsTrain,'outputSize',imageSize,'DataAugmentation',augmenter);
 
@@ -107,7 +90,7 @@ options = trainingOptions('sgdm', ...
     'InitialLearnRate',1e-3, ...
     'L2Regularization',0.0005, ...
     'MaxEpochs',100, ...  
-    'MiniBatchSize',1, ...
+    'MiniBatchSize',10, ...
     'Plots','training-progress', ...
     'validationData',impxdsTest,...
     'ValidationPatience',10,...
@@ -115,7 +98,7 @@ options = trainingOptions('sgdm', ...
     'VerboseFrequency',100);
 
 %% Train network!
-[trainednet_DataTestCROP, info_DataTestCROP] = trainNetwork(pximds,lgraph,options);
+[trainednetTransfer, info] = trainNetwork(pximds,lgraphtransfer,options);
 
 
 % %% Test network
@@ -128,33 +111,15 @@ options = trainingOptions('sgdm', ...
 
 %% Evaluate network performance
 
-pxdsResults_DataTestCROP = semanticseg(imdsTest,trainednet_DataTestCROP, ...
+pxdsResultsTransfer = semanticseg(imdsTest,trainednetTransfer, ...
     'MiniBatchSize',1, ...
-    'Verbose',false,...
-    'WriteLocation','C:\Users\Max Kivits\Documents\MATLAB\Bacheloropdracht\Out\SemantisSeg');
+    'Verbose',true);
  
-metrics = evaluateSemanticSegmentation(pxdsResults_DataTestCROP,pxdsTest,'Verbose',false);
+%metricsTransfer = evaluateSemanticSegmentation(pxdsResultsTransfer,pxds,'Verbose',false);
 % metrics.DataSetMetrics;         %Average performance of entire network over all classes
 % metrics.ClassMetrics;           %Performance of network per class
-
+ 
 %% Save Net and results
-% save('/home/s1590294/Out/DataTestCROP', 'trainednet_DataTestCROP');
-% save('/home/s1590294/Out/DataTestCROP', 'pxdsResults_DataTestCROP');
-% save('/home/s1590294/Out/DataTestCROP', 'shuffledIndices_DataTestCROP');
-
-save('C:\Users\Max Kivits\Documents\MATLAB\Bacheloropdracht\Out\Vars\trainednet_DataTestCROP.mat', 'trainednet_DataTestCROP');
-save('C:\Users\Max Kivits\Documents\MATLAB\Bacheloropdracht\Out\Vars\pxdsResults_DataTestCROP', 'pxdsResults_DataTestCROP');
-save('C:\Users\Max Kivits\Documents\MATLAB\Bacheloropdracht\Out\Vars\shuffledIndices_DataTestCROP', 'shuffledIndices_DataTestCROP');
-save('C:\Users\Max Kivits\Documents\MATLAB\Bacheloropdracht\Out\Vars\metricsCROP', 'metrics');
-
-%% Test net
-figure
-for iTest=1:3
-    I = read(imdsTest);
-    C = semanticseg(I, trainednet_DataTestCROP);
-
-    B = labeloverlay(I,C,'colormap','parula','Transparency',0.75);
-    subplot(1,3,iTest);
-    imshow(B)
-end
-
+save('/home/s1590294/OutTransfer', 'pxdsResultsTransfer');
+save('/home/s1590294/OutTransfer', 'trainednetTransfer');
+save('/home/s1590294/OutTransfer', 'shuffledIndicesTransfer');

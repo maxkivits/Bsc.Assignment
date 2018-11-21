@@ -1,10 +1,10 @@
 clc; close all;
 %% Create image and label Datastores
-imLoc = '/deepstore/datasets/ram/slss/';
-pxLoc = '/deepstore/datasets/ram/slss/';
+% imLoc = '/deepstore/datasets/ram/slss/';
+% pxLoc = '/deepstore/datasets/ram/slss/';
 
-% imLoc = 'C:\Users\Max Kivits\Documents\MATLAB\Bacheloropdracht\Data\';
-% pxLoc = 'C:\Users\Max Kivits\Documents\MATLAB\Bacheloropdracht\Data\';
+imLoc = 'C:\Users\Max Kivits\Documents\MATLAB\Bacheloropdracht\Data\crop\';
+pxLoc = 'C:\Users\Max Kivits\Documents\MATLAB\Bacheloropdracht\Data\crop\';
 
 imDirSpec = 'cropAugNoiseImg';
 pxDirSpec = 'cropAugNoiseLab';
@@ -67,8 +67,8 @@ impxdsTest = pixelLabelImageDatastore(imdsTest, pxdsTest);
 %% Load Net
 imageSize = [360 480 3];
 numClasses = numel(classNames);
-lgraph = load('/home/s1590294/net/lgraphSGN3.mat');
-%lgraph = load('C:\Users\Max Kivits\Documents\MATLAB\Bacheloropdracht\Cluster\net\lgraphSGN3.mat');
+% lgraph = load('/home/s1590294/net/lgraphSGN3.mat');
+lgraph = load('C:\Users\Max Kivits\Documents\MATLAB\Bacheloropdracht\Cluster\net\lgraphSGN3.mat');
 
 %Convert to layergraph to be able to edit network
 %lgraph = layerGraph(lgraph.lgraphSGN3);
@@ -106,7 +106,7 @@ options = trainingOptions('sgdm', ...
     'InitialLearnRate',1e-3, ...
     'L2Regularization',0.0005, ...
     'MaxEpochs',100, ...  
-    'MiniBatchSize',10, ...
+    'MiniBatchSize',1, ...
     'Plots','training-progress', ...
     'validationData',impxdsTest,...
     'ValidationPatience',10,...
@@ -131,12 +131,31 @@ pxdsResults_DataTestAUG = semanticseg(imdsTest,trainednet_DataTestAUG, ...
     'MiniBatchSize',1, ...
     'Verbose',false);
  
+metrics = evaluateSemanticSegmentation(pxdsResults_DataTestCROP,pxdsTest,'Verbose',false);
+
 %metricsScratch = evaluateSemanticSegmentation(pxdsResultsScratch,pxds,'Verbose',false);
 % metrics.DataSetMetrics;         %Average performance of entire network over all classes
 % metrics.ClassMetrics;           %Performance of network per class
 
 %% Save Net and results
-save('/home/s1590294/Out/DataTestAUG', 'trainednet_DataTestAUG');
-save('/home/s1590294/Out/DataTestAUG', 'pxdsResults_DataTestAUG');
-save('/home/s1590294/Out/DataTestAUG', 'shuffledIndices_DataTestAUG');
+save('C:\Users\Max Kivits\Documents\MATLAB\Bacheloropdracht\Out\Vars\trainednet_DataTestAUG.mat', 'trainednet_DataTestAUG');
+save('C:\Users\Max Kivits\Documents\MATLAB\Bacheloropdracht\Out\Vars\pxdsResults_DataTestAUG.mat', 'pxdsResults_DataTestAUG');
+save('C:\Users\Max Kivits\Documents\MATLAB\Bacheloropdracht\Out\Vars\shuffledIndices_DataTestAUG.mat', 'shuffledIndices_DataTestAUG');
+save('C:\Users\Max Kivits\Documents\MATLAB\Bacheloropdracht\Out\Vars\metricsAUG.mat', 'metrics')
+
+% save('/home/s1590294/Out/DataTestAUG', 'trainednet_DataTestAUG');
+% save('/home/s1590294/Out/DataTestAUG', 'pxdsResults_DataTestAUG');
+% save('/home/s1590294/Out/DataTestAUG', 'shuffledIndices_DataTestAUG');
+
+%% plot 9 random images
+figure
+for iTest=1:9
+    I = read(imdsTest);
+    C = semanticseg(I, trainednet_DataTestCROP);
+
+    B = labeloverlay(I,C,'colormap','parula','Transparency',0.75);
+    subplot(3,3,iTest);
+    imshow(B)
+end
+saveas(gcf,'C:\Users\Max Kivits\Documents\MATLAB\Bacheloropdracht\Out\testImg\dataAug.png');
 

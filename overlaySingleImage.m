@@ -1,7 +1,7 @@
 close all;
 
-TestimDir = "C:\Users\Max Kivits\Documents\MATLAB\Bacheloropdracht\Data\temper";
-TestpxDir = "C:\Users\Max Kivits\Documents\MATLAB\Bacheloropdracht\Tests\test16Scratch\Labels";
+TestimDir = "C:\Users\Max Kivits\Documents\MATLAB\Bacheloropdracht\Data\crop\croppedImages";
+TestpxDir = "C:\Users\Max Kivits\Documents\MATLAB\Bacheloropdracht\Data\crop\croppedLabels";
 
 classNames = ["Background" "Skin" "Lesion"];
 pixelLabelID = [0 1 2];
@@ -9,9 +9,9 @@ pixelLabelID = [0 1 2];
 Testimds = imageDatastore(TestimDir);
 Testpxds = pixelLabelDatastore(TestpxDir,classNames,pixelLabelID);
 
-figure('position',[10 10 1500 1000]);
+%figure('position',[10 10 1500 1000]);
 % iImage = 147;
-for iOverlay = 1:167
+for iOverlay = 1:20
 
     overlayImage = readimage(Testimds,iOverlay);
     overlayLabel = readimage(Testpxds,(iOverlay));

@@ -1,14 +1,13 @@
 % imgdatastore stores imgs in different manner as pixellabeldatastore...
 %% Imgs
-mypath = 'C:\Users\Max Kivits\Documents\MATLAB\Bacheloropdracht\Data\tempest'; %specify imgs folder 
+mypath = 'C:\Users\Max Kivits\Documents\MATLAB\Bacheloropdracht\Data\crop\cropAugNoiseLab'; %specify imgs folder 
 
-names = dir(mypath);
+names = dir(sprintf('%s\\*.png',mypath));
 names([names.isdir]) = [];
 fileNames = {names.name};
 
 for iFile = 1:length(fileNames) %# Loop over the file names
-    newName = sprintf('%03d.nc', iFile+126);  %# Make the new name
-    f = fullfile(mypath, sprintf("img%03d.JPG",iFile+126)); %Specify new name
+    f = fullfile(mypath, sprintf("lab%03d.png",iFile+126)); %Specify new name
     g = fullfile(mypath, fileNames{iFile});   
     movefile(g,f);        %# Rename the file   
 end

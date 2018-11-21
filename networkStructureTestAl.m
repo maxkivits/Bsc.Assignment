@@ -81,6 +81,7 @@ lgraphVGG19 = load('C:\Users\Max Kivits\Documents\MATLAB\Bacheloropdracht\Cluste
 lgraphFCN8 = load('C:\Users\Max Kivits\Documents\MATLAB\Bacheloropdracht\Cluster\net\lgraphFCN8.mat');
 lgraphFCN16 = load('C:\Users\Max Kivits\Documents\MATLAB\Bacheloropdracht\Cluster\net\lgraphFCN16.mat');
 lgraphFCN32 = load('C:\Users\Max Kivits\Documents\MATLAB\Bacheloropdracht\Cluster\net\lgraphFCN32.mat');
+lgraphSGNVGG16 = load('C:\Users\Max Kivits\Documents\MATLAB\Bacheloropdracht\Cluster\net\lgraphSGNVGG16.mat');
 
 
 %Convert to layergraph to be able to edit network
@@ -96,6 +97,7 @@ lgraphVGG19 = lgraphVGG19.lgraphVGG19;
 lgraphFCN8 = lgraphFCN8.lgraphFCN8;
 lgraphFCN16 = lgraphFCN16.lgraphFCN16;
 lgraphFCN32 = lgraphFCN32.lgraphFCN32;
+lgraphSGNVGG16 = lgraphSGNVGG16.lgraphSGNVGG16;
 
 %% Class weight balancing
 imageFreq = tbl.PixelCount ./ tbl.ImagePixelCount;
@@ -148,6 +150,11 @@ lgraphFCN32 = removeLayers(lgraphFCN32,'pixelLabels');
 lgraphFCN32 = addLayers(lgraphFCN32, pxLayer);
 lgraphFCN32 = connectLayers(lgraphFCN32,'softmax','labels');
 
+lgraphSGNVGG16 = removeLayers(lgraphSGNVGG16,'pixelLabels');
+lgraphSGNVGG16 = addLayers(lgraphSGNVGG16, pxLayer);
+lgraphSGNVGG16 = connectLayers(lgraphSGNVGG16,'softmax','labels');
+
+
 
 %% Image augmentation to generate more training data
 
@@ -166,8 +173,8 @@ pximds = pixelLabelImageDatastore(imdsTrain,pxdsTrain,'outputSize',imageSize,'Da
 
 
 %% List lgraph
-lgraph = {lgraphSGN1,lgraphSGN2,lgraphSGN3,lgraphSGN4,lgraphSGN5,lgraphSGN6,lgraphVGG16,lgraphVGG19,lgraphFCN8,lgraphFCN16,lgraphFCN32};
-lgraphname = {'lgraphSGN1','lgraphSGN2','lgraphSGN3','lgraphSGN4','lgraphSGN5','lgraphSGN6','lgraphVGG16','lgraphVGG19','lgraphFCN8','lgraphFCN16','lgraphFCN32'};
+lgraph = {lgraphSGN1,lgraphSGN2,lgraphSGN3,lgraphSGN4,lgraphSGN5,lgraphSGN6,lgraphVGG16,lgraphVGG19,lgraphFCN8,lgraphFCN16,lgraphFCN32,lgraphSGNVGG16};
+lgraphname = {'lgraphSGN1','lgraphSGN2','lgraphSGN3','lgraphSGN4','lgraphSGN5','lgraphSGN6','lgraphVGG16','lgraphVGG19','lgraphFCN8','lgraphFCN16','lgraphFCN32','lgraphSGNVGG16'};
 
 
 %% Traning options 
@@ -184,7 +191,7 @@ options = trainingOptions('sgdm', ...
     'VerboseFrequency',100);
 
 %% Train network
-for iTrain=4:length(lgraph)
+for iTrain=11:11%length(lgraph)
     fprintf(sprintf('Training network %s \n',lgraphname{iTrain}));
 [trainedNet, info] = trainNetwork(pximds,lgraph{iTrain},options);
 
